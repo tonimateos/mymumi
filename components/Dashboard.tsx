@@ -32,7 +32,7 @@ export default function Dashboard() {
     const { data: session } = useSession()
 
     // UI State
-    const [activeTab, setActiveTab] = useState<"url" | "text">("url")
+    const [activeTab, setActiveTab] = useState<"text" | "url">("text")
 
     // Form State
     const [url, setUrl] = useState("")
@@ -170,15 +170,6 @@ export default function Dashboard() {
                     {/* Tabs */}
                     <div className="flex justify-center gap-4 mt-6 mb-4">
                         <button
-                            onClick={() => { setActiveTab("url"); setError("") }}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "url"
-                                ? "bg-neutral-800 text-white border border-neutral-700"
-                                : "text-neutral-500 hover:text-neutral-300"
-                                }`}
-                        >
-                            Spotify URL
-                        </button>
-                        <button
                             onClick={() => { setActiveTab("text"); setError("") }}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "text"
                                 ? "bg-neutral-800 text-white border border-neutral-700"
@@ -187,39 +178,65 @@ export default function Dashboard() {
                         >
                             Paste Text List
                         </button>
+                        <button
+                            onClick={() => { setActiveTab("url"); setError("") }}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "url"
+                                ? "bg-neutral-800 text-white border border-neutral-700"
+                                : "text-neutral-500 hover:text-neutral-300"
+                                }`}
+                        >
+                            Spotify URL
+                        </button>
                     </div>
 
                     <form onSubmit={handleSubmit} className="relative mt-2">
                         {activeTab === "url" ? (
-                            <div className="relative">
+                            <div className="relative opacity-60">
                                 <input
                                     type="text"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     placeholder="https://open.spotify.com/playlist/..."
-                                    className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg placeholder-neutral-600 transition-all pr-24"
+                                    disabled={true}
+                                    className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg placeholder-neutral-600 transition-all pr-24 cursor-not-allowed"
                                 />
                                 <button
                                     type="submit"
-                                    disabled={loading || !url}
-                                    className="absolute right-2 top-2 bottom-2 px-6 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={true}
+                                    className="absolute right-2 top-2 bottom-2 px-6 bg-neutral-700 text-neutral-400 font-semibold rounded-full cursor-not-allowed"
                                 >
-                                    {loading ? "..." : "Save"}
+                                    Saved
                                 </button>
+                                <div className="absolute -bottom-8 left-0 right-0 text-center">
+                                    <span className="text-xs text-yellow-500 bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-800/50">
+                                        Not yet available
+                                    </span>
+                                </div>
                             </div>
                         ) : (
-                            <div className="relative">
+                            <div className="relative space-y-4">
+                                <div className="text-sm text-neutral-400 bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800">
+                                    <p className="mb-2">
+                                        <span className="text-white font-medium">Tip:</span> Use <a href="https://www.tunemymusic.com/home" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Tune My Music</a> to export your playlist.
+                                    </p>
+                                    <ol className="list-decimal list-inside space-y-1 text-xs opacity-80 text-left px-4">
+                                        <li>Select your source (e.g., Spotify)</li>
+                                        <li>Select destination as <strong>"Export to Text"</strong></li>
+                                        <li>Copy the result and paste it below</li>
+                                    </ol>
+                                </div>
+
                                 <textarea
                                     value={textInput}
                                     onChange={(e) => setTextInput(e.target.value)}
-                                    placeholder="Artist - Song Name&#10;Artist - Song Name&#10;..."
+                                    placeholder="Copy-paste a list of Artist - Songs in any format that an AI can understand"
                                     rows={6}
                                     className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-3xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg placeholder-neutral-600 transition-all resize-none"
                                 />
                                 <button
                                     type="submit"
                                     disabled={loading || !textInput.trim()}
-                                    className="mt-4 w-full py-3 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full py-3 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading ? "Processing..." : "Save Text List"}
                                 </button>
