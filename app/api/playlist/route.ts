@@ -54,7 +54,7 @@ export async function POST(req: Request) {
             },
         })
 
-        return NextResponse.json({ type: 'spotify', ...playlistData })
+        return NextResponse.json({ ...playlistData, type: 'spotify' })
     } catch (error) {
         console.error("Error in playlist route:", error)
         return NextResponse.json({ error: "Failed to fetch playlist" }, { status: 500 })
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
         }
 
         const playlistData = await getPlaylist(playlistId)
-        return NextResponse.json({ type: 'spotify', ...playlistData, musicIdentity: user.musicIdentity })
+        return NextResponse.json({ ...playlistData, type: 'spotify' })
 
     } catch (error) {
         console.error("Error fetching saved playlist:", error)
