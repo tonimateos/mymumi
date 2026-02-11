@@ -5,6 +5,22 @@ const spotifyApi = new SpotifyWebApi({
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
 })
 
+export const searchTrack = async (query: string) => {
+    try {
+        const data = await spotifyApi.clientCredentialsGrant()
+        spotifyApi.setAccessToken(data.body["access_token"])
+
+        const result = await spotifyApi.searchTracks(query, { limit: 1 })
+        if (result.body.tracks?.items.length && result.body.tracks.items.length > 0) {
+            return result.body.tracks.items[0]
+        }
+        return null
+    } catch (error) {
+        console.error("Error searching track:", error)
+        return null
+    }
+}
+
 export const getPlaylist = async (playlistId: string) => {
     try {
         const data = await spotifyApi.clientCredentialsGrant()

@@ -12,10 +12,29 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { url } = body
+    const { url, text } = body
 
-    if (!url) {
-        return NextResponse.json({ error: "URL is required" }, { status: 400 })
+    if (!url && !text) {
+        return NextResponse.json({ error: "URL or Text is required" }, { status: 400 })
+    }
+
+    if (text) {
+        try {
+            // Save to DB
+            await prisma.user.update({
+                where: { id: session.user.id },
+                data: {
+                    playlistText: text,
+                    playlistUrl: null,
+                    sourceType: 'text_list'
+                },
+            })
+
+            return NextResponse.json({ type: 'text', content: text })
+        } catch (error) {
+            console.error("Error processing text playlist:", error)
+            return NextResponse.json({ error: "Failed to process text list" }, { status: 500 })
+        }
     }
 
     const playlistId = extractPlaylistId(url)
@@ -24,16 +43,18 @@ export async function POST(req: Request) {
     }
 
     try {
-        // Fetch from Spotify to validate and get details
         const playlistData = await getPlaylist(playlistId)
 
-        // Save to DB (Update user's playlistUrl)
         await prisma.user.update({
             where: { id: session.user.id },
-            data: { playlistUrl: url },
+            data: {
+                playlistUrl: url,
+                playlistText: null,
+                sourceType: 'spotify_url'
+            },
         })
 
-        return NextResponse.json(playlistData)
+        return NextResponse.json({ type: 'spotify', ...playlistData })
     } catch (error) {
         console.error("Error in playlist route:", error)
         return NextResponse.json({ error: "Failed to fetch playlist" }, { status: 500 })
@@ -50,21 +71,30 @@ export async function GET(req: Request) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { playlistUrl: true },
+            select: { playlistUrl: true, playlistText: true, sourceType: true },
         })
 
-        if (!user || !user.playlistUrl) {
+        if (!user) {
+            return NextResponse.json({ playlist: null })
+        }
+
+        // Handle Text List
+        if (user.sourceType === 'text_list' && user.playlistText) {
+            return NextResponse.json({ type: 'text', content: user.playlistText })
+        }
+
+        // Handle Spotify URL
+        if (!user.playlistUrl) {
             return NextResponse.json({ playlist: null })
         }
 
         const playlistId = extractPlaylistId(user.playlistUrl)
         if (!playlistId) {
-            // Should not happen if validation worked before, but handle it
             return NextResponse.json({ playlist: null })
         }
 
         const playlistData = await getPlaylist(playlistId)
-        return NextResponse.json(playlistData)
+        return NextResponse.json({ type: 'spotify', ...playlistData })
 
     } catch (error) {
         console.error("Error fetching saved playlist:", error)
