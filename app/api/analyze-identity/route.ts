@@ -41,11 +41,16 @@ export async function POST(req: Request) {
         // Clean and parse the response
         const cleanedResponse = textResponse.replace(/```json/g, "").replace(/```/g, "").trim()
 
-        let identityCategories: string[]
+        // Define stored type for clarity
+        type IdentityCategory = { title: string, description: string }
+
+        let identityCategories: IdentityCategory[]
         try {
             identityCategories = JSON.parse(cleanedResponse)
-            if (!Array.isArray(identityCategories) || !identityCategories.every(item => typeof item === 'string')) {
-                throw new Error("Response is not a string array")
+            if (!Array.isArray(identityCategories) || !identityCategories.every(item =>
+                typeof item === 'object' && item !== null && 'title' in item && 'description' in item
+            )) {
+                throw new Error("Response is not an array of objects with title and description")
             }
         } catch (e) {
             console.error("Failed to parse Gemini response:", textResponse)
