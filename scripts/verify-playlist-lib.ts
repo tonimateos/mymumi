@@ -19,17 +19,12 @@ const run = async () => {
         const token = data.body["access_token"]
         console.log("Authentication successful.")
 
-        // 3. Fetch Tracks via MAIN ENDPOINT (but with tracks fields)
-        console.log("Fetching tracks from MAIN endpoint with 'fields=name,tracks(...)'... WITHOUT market")
+        console.log("Fetching...")
         const fields = "tracks.items(track(name,artists(name)))";
-        // const fields = "total,limit";
-        // const fields = "name,items";
         const encodedFields = encodeURIComponent(fields);
 
         const url = `https://api.spotify.com/v1/playlists/${playlistId}?market=ES&fields=${encodedFields}`;
-        // const url2 = `https://api.spotify.com/v1/playlists/${playlistId}`;
 
-        console.log(url)
         const response = await fetch(url, {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -56,7 +51,7 @@ const run = async () => {
         console.log("\n--- Generated List---")
         console.log(simplifiedTracks)
 
-        // // 5. Final Assertion
+        // 5. Final Assertion
         if (simplifiedTracks.length > 0) {
             console.log(`\nPASS: Successfully built a list of ${simplifiedTracks.length} artist - song pairs.`)
         } else {
