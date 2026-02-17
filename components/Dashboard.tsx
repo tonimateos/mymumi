@@ -19,6 +19,7 @@ interface SpotifyPlaylist {
         display_name: string
     }
     musicIdentity?: string | null
+    content?: string
 }
 
 interface TextPlaylist {
@@ -159,9 +160,14 @@ export default function Dashboard() {
                 body: JSON.stringify(payload)
             })
 
-            if (!res.ok) throw new Error("Failed to save playlist")
-
             const data = await res.json()
+
+            if (!res.ok) throw new Error(data.error || "Failed to save playlist")
+
+            if (activeTab === 'url' && (!data.content || data.content.trim().length === 0)) {
+                throw new Error("No songs found. Make sure the playlist is public and not empty.")
+            }
+
             setPlaylist(data)
             setCurrentStep(4)
         } catch (err: any) {
@@ -279,6 +285,9 @@ export default function Dashboard() {
                         <div className="text-center">
                             <h2 className="text-3xl font-bold mb-2">Import your music</h2>
                             <p className="text-neutral-400">Provide a playlist to shape your identity.</p>
+                            <p className="text-xs text-neutral-500 text-center">
+                                Tip: Use <a href="https://www.tunemymusic.com/" target="_blank" className="underline hover:text-white">TuneMyMusic</a> to <b>Export your Playlist to a File</b>, then copy and paste here.
+                            </p>
                         </div>
 
                         <div className="flex justify-center gap-4 mb-6">
@@ -296,43 +305,75 @@ export default function Dashboard() {
                                     className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
                                 />
                             ) : (
-                                <textarea
-                                    value={textInput}
-                                    onChange={(e) => setTextInput(e.target.value)}
-                                    placeholder="Paste a list of Artist - Song..."
-                                    rows={8}
-                                    className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                                />
+                                <div className="space-y-2">
+                                    <textarea
+                                        value={textInput}
+                                        onChange={(e) => setTextInput(e.target.value)}
+                                        placeholder="Paste a list of Artist - Song..."
+                                        rows={8}
+                                        className="w-full px-6 py-4 bg-neutral-900 border border-neutral-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    />
+                                </div>
                             )}
                             <button
                                 type="submit"
                                 disabled={loading || (activeTab === 'url' ? !url : !textInput)}
                                 className="w-full py-4 bg-white text-black font-bold rounded-2xl hover:bg-neutral-200 transition-colors disabled:opacity-50"
                             >
-                                {loading ? "Saving..." : "Save Playlist"}
+                                {loading ? "Saving..." : "Review Playlist"}
                             </button>
                         </form>
+                        {error && (
+                            <div className="mt-4 p-4 bg-red-900/20 text-red-300 rounded-xl text-center border border-red-900/50">
+                                <p className="font-bold mb-1">Import Failed</p>
+                                <p className="text-sm">{error}</p>
+                                {activeTab === "url" && (
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab("text");
+                                            setError("");
+                                        }}
+                                        className="text-xs mt-2 text-neutral-400 underline hover:text-white bg-transparent border-0 cursor-pointer"
+                                    >
+                                        Try copying the song list manually
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {/* Step 4: Analyze */}
+                {/* Step 4: Analyze (With Preview) */}
                 {currentStep === 4 && (
                     <div className="text-center space-y-8 animate-in fade-in zoom-in duration-500">
-                        <div className="w-24 h-24 bg-gradient-to-tr from-purple-500 to-indigo-500 rounded-full mx-auto flex items-center justify-center shadow-lg shadow-purple-500/30 animate-pulse">
+                        <div className="w-24 h-24 bg-gradient-to-tr from-purple-500 to-indigo-500 rounded-full mx-auto flex items-center justify-center shadow-lg shadow-purple-500/30">
                             <span className="text-4xl">🔮</span>
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold mb-2">Ready to discover your identity?</h2>
-                            <p className="text-neutral-400">We've got your playlist. Now let's see what it says about you.</p>
+                            <p className="text-neutral-400">We found <strong>{playlist?.type === 'spotify' && playlist.tracks ? playlist.tracks.total : (playlist?.content?.split('\n').length || 0)}</strong> songs.</p>
                         </div>
 
-                        <button
-                            onClick={handleAnalyze}
-                            disabled={analyzing}
-                            className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xl rounded-2xl shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02]"
-                        >
-                            {analyzing ? "Analyzing Magic..." : "Analyze My Music Identity"}
-                        </button>
+                        {/* Preview Box */}
+                        <div className="w-full max-h-60 overflow-y-auto bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 text-left font-mono text-xs text-neutral-400 whitespace-pre-wrap">
+                            {playlist?.content || "No songs found."}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setCurrentStep(3)}
+                                className="px-6 py-4 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-2xl transition-colors"
+                            >
+                                Back
+                            </button>
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={analyzing}
+                                className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xl rounded-2xl shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02]"
+                            >
+                                {analyzing ? "Analyzing Magic..." : "Analyze My Music Identity"}
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -347,22 +388,33 @@ export default function Dashboard() {
 
                             <div className="mt-6 bg-black/30 rounded-xl p-6 text-left border border-white/5">
                                 <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4">Your Analysis</h3>
-                                <div className="prose prose-invert prose-sm max-w-none text-neutral-300 whitespace-pre-wrap">
+                                <div className="prose prose-invert prose-sm max-w-none text-neutral-300">
                                     {playlist?.musicIdentity && (
                                         (() => {
                                             try {
                                                 const categories = JSON.parse(playlist.musicIdentity)
                                                 return Array.isArray(categories) ? (
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-6">
                                                         {categories.map((c: any, i: number) => (
-                                                            <div key={i} className="flex gap-2">
-                                                                <span className="text-indigo-400 font-bold">{i + 1}.</span>
-                                                                <span>{typeof c === 'string' ? c : c.title}</span>
+                                                            <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold border border-indigo-500/30">
+                                                                        {i + 1}
+                                                                    </span>
+                                                                    <span className="text-lg font-bold text-indigo-300">
+                                                                        {typeof c === 'string' ? c : c.title}
+                                                                    </span>
+                                                                </div>
+                                                                {typeof c === 'object' && c.description && (
+                                                                    <p className="text-neutral-300 leading-relaxed pl-9">
+                                                                        {c.description}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
-                                                ) : playlist.musicIdentity
-                                            } catch { return playlist.musicIdentity }
+                                                ) : <div className="whitespace-pre-wrap">{playlist.musicIdentity}</div>
+                                            } catch { return <div className="whitespace-pre-wrap">{playlist.musicIdentity}</div> }
                                         })()
                                     )}
                                 </div>
