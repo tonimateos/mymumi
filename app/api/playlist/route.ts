@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "../auth/[...nextauth]/route"
 import { prisma } from "@/lib/prisma"
-import { getPlaylist, extractPlaylistId } from "@/lib/spotify"
+import { getPlaylist, extractPlaylistId, getAccessToken } from "@/lib/spotify"
 import { NextResponse } from "next/server"
+import { SpotifyApi } from "@spotify/web-api-ts-sdk"
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions)
@@ -60,24 +61,57 @@ export async function POST(req: Request) {
     }
 
     try {
-        const playlistData = await getPlaylist(playlistId)
-        console.log(`[API] Fetched playlist data`, playlistData)
+        console.log(`[API] Extracted playlist ID: ${playlistId}`)
+
+        // Get fresh access token (handles refresh if needed)
+        const accessToken = await getAccessToken(session.user.id)
+
+        // Initialize SDK with User Token
+        const token = {
+            access_token: accessToken,
+            token_type: "Bearer",
+            expires_in: 3600,
+            refresh_token: "", // Managed by getAccessToken
+            expires: Date.now() + 3600 * 1000
+        }
+        const sdk = SpotifyApi.withAccessToken(process.env.SPOTIFY_CLIENT_ID!, token as any)
+
+        // Light debug: Check if we can fetch user profile to verify token FIRST
+        try {
+            await sdk.currentUser.profile();
+        } catch (e: any) {
+            console.error("[API] Token failed generic profile check", e);
+            return NextResponse.json({ error: "Spotify Token Invalid", details: e.message }, { status: 401 })
+        }
+
+        // Use raw fetch for playlist items as SDK was throwing 403s
+        const rawResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        })
+
+        if (!rawResponse.ok) {
+            const errText = await rawResponse.text()
+            console.error(`[API] Raw fetch failed: ${rawResponse.status} - ${errText}`)
+            throw new Error(`Spotify API Error: ${rawResponse.status} ${errText}`)
+        }
+
+        const playlistItems = await rawResponse.json()
+        console.log(`[API] Fetched playlist items. Total: ${playlistItems.total}`)
 
         // Convert tracks to text list
         let textList = ""
-        if (playlistData.tracks && playlistData.tracks.items) {
-            textList = playlistData.tracks.items
-                .map((item: { track: { name: string, artists: { name: string }[] } | null }) => item.track)
-                .filter((track: { name: string, artists: { name: string }[] } | null): track is { name: string, artists: { name: string }[] } => track !== null)
-                .map((track: { name: string, artists: { name: string }[] }) => `${track.artists[0]?.name || 'Unknown Artist'} - ${track.name}`)
+        if (playlistItems.items) {
+            textList = playlistItems.items
+                .map((item: any) => item.track)
+                .filter((track: any) => track !== null)
+                .map((track: any) => `${track.artists[0]?.name || 'Unknown Artist'} - ${track.name}`)
                 .join('\n')
 
             console.log(`[API] Generated text list length: ${textList.length}`)
-            if (textList.length > 0) {
-                console.log(`[API] First line of text list: ${textList.split('\n')[0]}`)
-            }
         } else {
-            console.log("[API] No tracks found to convert.")
+            console.log("[API] No tracks found via SDK.")
         }
 
         await prisma.user.update({
@@ -91,9 +125,9 @@ export async function POST(req: Request) {
         console.log("[API] User updated with playlist text.")
 
         return NextResponse.json({ type: 'text', content: textList })
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in playlist route:", error)
-        return NextResponse.json({ error: "Failed to fetch playlist" }, { status: 500 })
+        return NextResponse.json({ error: "Failed to fetch playlist", details: error.message }, { status: 500 })
     }
 }
 
@@ -117,8 +151,18 @@ export async function GET(req: Request) {
             },
         })
 
+        const spotifyAccount = await prisma.account.findFirst({
+            where: {
+                userId: session.user.id,
+                provider: 'spotify'
+            }
+        })
+
         if (!user) {
-            return NextResponse.json({ playlist: null })
+            return NextResponse.json({
+                playlist: null,
+                isSpotifyConnected: !!spotifyAccount
+            })
         }
 
         // Handle Text List
@@ -128,13 +172,17 @@ export async function GET(req: Request) {
                 content: user.playlistText,
                 musicIdentity: user.musicIdentity,
                 nickname: user.nickname,
-                voiceType: user.voiceType
+                voiceType: user.voiceType,
+                isSpotifyConnected: !!spotifyAccount
             })
         }
 
         // Handle Spotify URL
         if (!user.playlistUrl) {
-            return NextResponse.json({ playlist: null })
+            return NextResponse.json({
+                playlist: null,
+                isSpotifyConnected: !!spotifyAccount
+            })
         }
 
         // If we have text content (legacy or new), return it
@@ -144,12 +192,16 @@ export async function GET(req: Request) {
                 content: user.playlistText,
                 musicIdentity: user.musicIdentity,
                 nickname: user.nickname,
-                voiceType: user.voiceType
+                voiceType: user.voiceType,
+                isSpotifyConnected: !!spotifyAccount
             })
         }
 
         // Strictly do not fetch from Spotify on GET. 
-        return NextResponse.json({ playlist: null })
+        return NextResponse.json({
+            playlist: null,
+            isSpotifyConnected: !!spotifyAccount
+        })
 
     } catch (error) {
         console.error("Error fetching saved playlist:", error)

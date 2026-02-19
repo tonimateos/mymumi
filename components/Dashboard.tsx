@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession, signOut } from "next-auth/react"
+import { useSession, signOut, signIn } from "next-auth/react"
 import Image from "next/image"
 import prompts from "@/config/prompts.json"
 
@@ -56,6 +56,8 @@ export default function Dashboard() {
     const [url, setUrl] = useState("")
     const [textInput, setTextInput] = useState("")
     const [playlist, setPlaylist] = useState<PlaylistData | null>(null)
+    const [showSpotifyLogin, setShowSpotifyLogin] = useState(false)
+    const [isSpotifyConnected, setIsSpotifyConnected] = useState(false)
 
     // General State
     const [loading, setLoading] = useState(false)
@@ -78,6 +80,9 @@ export default function Dashboard() {
                 const data = await res.json()
                 if (data.nickname) setNickname(data.nickname)
                 if (data.voiceType) setVoiceType(data.voiceType)
+                setIsSpotifyConnected(!!data.isSpotifyConnected)
+                // Always show spotify login/disconnect area if we are in URL mode
+                if (data.isSpotifyConnected) setShowSpotifyLogin(true)
 
                 if (data.type === 'text' || data.type === 'spotify') {
                     setPlaylist(data)
@@ -162,7 +167,13 @@ export default function Dashboard() {
 
             const data = await res.json()
 
-            if (!res.ok) throw new Error(data.error || "Failed to save playlist")
+            if (!res.ok) {
+                if (data.code === 'SPOTIFY_AUTH_REQUIRED') {
+                    setShowSpotifyLogin(true)
+                    return
+                }
+                throw new Error(data.error || "Failed to save playlist")
+            }
 
             if (activeTab === 'url' && (!data.content || data.content.trim().length === 0)) {
                 throw new Error("No songs found. Make sure the playlist is public and not empty.")
@@ -204,6 +215,30 @@ export default function Dashboard() {
             }
         } catch (err) {
             console.error(err)
+        }
+    }
+
+    const handleUnlinkSpotify = async () => {
+        if (!confirm("Are you sure you want to disconnect your Spotify account?")) return
+
+        setLoading(true)
+        try {
+            const res = await fetch("/api/auth/unlink/spotify", { method: "POST" })
+            if (res.ok) {
+                setIsSpotifyConnected(false)
+                // Optionally reset playlist if it was from Spotify
+                if (activeTab === 'url') {
+                    setPlaylist(null)
+                    setUrl("")
+                }
+            } else {
+                alert("Failed to disconnect Spotify")
+            }
+        } catch (err) {
+            console.error(err)
+            alert("Error disconnecting Spotify")
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -323,6 +358,37 @@ export default function Dashboard() {
                                 {loading ? "Saving..." : "Review Playlist"}
                             </button>
                         </form>
+
+                        {showSpotifyLogin && (
+                            <div className="mt-6 p-6 bg-green-900/20 text-green-200 rounded-2xl text-center border border-green-500/20 animate-in fade-in zoom-in duration-300">
+                                <h3 className="font-bold text-lg mb-2">
+                                    {isSpotifyConnected ? "✅ Spotify Connected" : "🔒 Access Required"}
+                                </h3>
+                                <p className="mb-6 text-sm text-green-100/70">
+                                    {isSpotifyConnected
+                                        ? "Your Spotify account is linked. You can import your playlists."
+                                        : "To fetch this playlist, we need permission to read your Spotify data."}
+                                </p>
+
+                                {isSpotifyConnected ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleUnlinkSpotify}
+                                        className="w-full py-4 bg-red-600/20 hover:bg-red-600/40 text-red-200 font-bold rounded-2xl transition-all transform hover:scale-[1.02] border border-red-500/30 flex items-center justify-center gap-3"
+                                    >
+                                        <span className="text-xl">🚫</span> Disconnect Spotify
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => signIn('spotify', { callbackUrl: window.location.href })}
+                                        className="w-full py-4 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg flex items-center justify-center gap-3"
+                                    >
+                                        <span className="text-xl">🚀</span> Connect with Spotify
+                                    </button>
+                                )}
+                            </div>
+                        )}
                         {error && (
                             <div className="mt-4 p-4 bg-red-900/20 text-red-300 rounded-xl text-center border border-red-900/50">
                                 <p className="font-bold mb-1">Import Failed</p>

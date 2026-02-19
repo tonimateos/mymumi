@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -41,7 +41,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 * Go to the Spotify Developer Dashboard and log in.
 * Click Create app.
 * App name: MyMuMe.
-* Redirect URI: You can just put http://localhost:3000 (we are using "Client Credentials" flow which doesn't actually use the redirect, but the form might require one).
+* Redirect URI: You must add `http://127.0.0.1:3000/api/auth/callback/spotify` and `http://127.0.0.1:3000/api/auth/callback/google` to your respective provider configs.
 * Click Save.
 * Click on your new app to see the Settings.
 * Copy the Client ID and Client Secret (you might need to click "View client secret") into your .env.local.
