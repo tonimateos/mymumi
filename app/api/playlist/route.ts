@@ -84,8 +84,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Spotify Token Invalid", details: e.message }, { status: 401 })
         }
 
+        const fields = "item";
+        const encodedFields = encodeURIComponent(fields);
+
+        // const url = `https://api.spotify.com/v1/playlists/${playlistId}/items?fields=${encodedFields}`;
+        const url = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`;
+
+        // const rawResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`, {
+
         // Use raw fetch for playlist items as SDK was throwing 403s
-        const rawResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`, {
+        const rawResponse = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${accessToken}`
             }
@@ -99,6 +107,12 @@ export async function POST(req: Request) {
 
         const playlistItems = await rawResponse.json()
         console.log(`[API] Fetched playlist items. Total: ${playlistItems.total}`)
+        console.log(playlistItems)
+
+        const isTrack = playlistItems.items[0].item.track;
+        const trackName = playlistItems.items[0].item.name;
+        const artists = playlistItems.items[0].item.artists;
+        console.log(isTrack, trackName, artists)
 
         // Convert tracks to text list
         let textList = ""
