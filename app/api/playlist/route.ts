@@ -105,8 +105,9 @@ export async function POST(req: Request) {
         if (playlistItems.items) {
             textList = playlistItems.items
                 .map((entry: any) => entry.item)
-                .filter((item: any) => item && item.track === true)
-                .map((item: any) => `${item.artists?.[0]?.name || 'Unknown Artist'} - ${item.name}`)
+                // Filter out non-tracks and items with no artist name
+                .filter((item: any) => item && item.track === true && item.artists?.[0]?.name)
+                .map((item: any) => `${item.artists[0].name} - ${item.name}`)
                 .join('\n')
 
             console.log(`[API] Generated text list length: ${textList.length}`)
