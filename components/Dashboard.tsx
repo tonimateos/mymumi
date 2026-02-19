@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signOut, signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import prompts from "@/config/prompts.json"
 
@@ -40,7 +41,8 @@ interface UserProfile {
 }
 
 export default function Dashboard() {
-    const { data: session } = useSession()
+    const { data: session, status } = useSession()
+    const searchParams = useSearchParams()
 
     // Stepper State
     const [currentStep, setCurrentStep] = useState(1)
@@ -69,8 +71,10 @@ export default function Dashboard() {
 
     // Load initial data
     useEffect(() => {
-        fetchProfileAndPlaylist()
-    }, [])
+        if (status === "authenticated") {
+            fetchProfileAndPlaylist()
+        }
+    }, [status])
 
     const fetchProfileAndPlaylist = async () => {
         setLoading(true)
@@ -87,12 +91,22 @@ export default function Dashboard() {
                     setPlaylist(data)
                 }
 
-                // Determine step based on data existence
-                if (!data.nickname) setCurrentStep(1)
-                else if (!data.voiceType) setCurrentStep(2)
-                else if (!data.content && !data.id) setCurrentStep(3) // No playlist
-                else if (!data.musicIdentity) setCurrentStep(4) // Has playlist, needs analysis
-                else setCurrentStep(5) // Done
+                // Check URL params for overrides from auth redirect
+                const stepParam = searchParams.get('step')
+                const tabParam = searchParams.get('tab')
+
+                if (stepParam) {
+                    const step = parseInt(stepParam)
+                    if (step >= 1 && step <= 5) setCurrentStep(step)
+                    if (tabParam === 'url' || tabParam === 'text') setActiveTab(tabParam)
+                } else {
+                    // Determine step based on data existence
+                    if (!data.nickname) setCurrentStep(1)
+                    else if (!data.voiceType) setCurrentStep(2)
+                    else if (!data.content && !data.id) setCurrentStep(3) // No playlist
+                    else if (!data.musicIdentity) setCurrentStep(4) // Has playlist, needs analysis
+                    else setCurrentStep(5) // Done
+                }
             }
         } catch (err) {
             console.error(err)
@@ -293,7 +307,7 @@ export default function Dashboard() {
                                 ) : (
                                     <button
                                         onClick={() => {
-                                            signIn('spotify', { callbackUrl: window.location.href });
+                                            signIn('spotify', { callbackUrl: `${window.location.origin}?step=${currentStep}&tab=${activeTab}` });
                                             setShowSpotifyPopover(false);
                                         }}
                                         className="w-full py-2 bg-[#1DB954] text-black hover:bg-[#1ed760] rounded-lg text-sm font-bold transition-colors"
@@ -394,7 +408,7 @@ export default function Dashboard() {
                                             <p className="mb-4 text-neutral-300">You need to connect Spotify to import by URL.</p>
                                             <button
                                                 type="button"
-                                                onClick={() => signIn('spotify', { callbackUrl: window.location.href })}
+                                                onClick={() => signIn('spotify', { callbackUrl: `${window.location.origin}?step=${currentStep}&tab=${activeTab}` })}
                                                 className="px-8 py-3 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold rounded-full transition-all transform hover:scale-[1.02] shadow-lg flex items-center justify-center gap-2 mx-auto"
                                             >
                                                 <span className="text-xl">🚀</span> Connect with Spotify
