@@ -1,9 +1,14 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "../auth/[...nextauth]/route"
 import { prisma } from "@/lib/prisma"
-import { getPlaylist, extractPlaylistId, getAccessToken } from "@/lib/spotify"
+import { fetchPlaylistTracks } from "@/lib/scraper"
 import { NextResponse } from "next/server"
-import { SpotifyApi } from "@spotify/web-api-ts-sdk"
+
+// Helper to extract playlist ID from URL
+function extractPlaylistId(url: string) {
+    const match = url.match(/playlist\/([a-zA-Z0-9]+)/)
+    return match ? match[1] : null
+}
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions)
@@ -15,7 +20,7 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { url, text, nickname, voiceType } = body
 
-    // Handle generic profile update (Step 1 & 2)
+    // Handle generic profile update
     if (nickname || voiceType) {
         try {
             await prisma.user.update({
@@ -38,7 +43,6 @@ export async function POST(req: Request) {
 
     if (text) {
         try {
-            // Save to DB
             await prisma.user.update({
                 where: { id: session.user.id },
                 data: {
@@ -61,74 +65,30 @@ export async function POST(req: Request) {
     }
 
     try {
-        console.log(`[API] Extracted playlist ID: ${playlistId}`)
+        console.log(`[API] Scraping playlist ID: ${playlistId}`)
 
-        // Get fresh access token (handles refresh if needed)
-        const accessToken = await getAccessToken(session.user.id)
-
-        // Initialize SDK with User Token
-        const token = {
-            access_token: accessToken,
-            token_type: "Bearer",
-            expires_in: 3600,
-            refresh_token: "", // Managed by getAccessToken
-            expires: Date.now() + 3600 * 1000
-        }
-        const sdk = SpotifyApi.withAccessToken(process.env.SPOTIFY_CLIENT_ID!, token as any)
-
-        // Light debug: Check if we can fetch user profile to verify token FIRST
-        try {
-            await sdk.currentUser.profile();
-        } catch (e: any) {
-            console.error("[API] Token failed generic profile check", e);
-            return NextResponse.json({ error: "Spotify Token Invalid", details: e.message }, { status: 401 })
-        }
-
-        // Use raw fetch for playlist items as SDK was throwing 403s
-        const rawResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`
-            }
-        })
-
-        if (!rawResponse.ok) {
-            const errText = await rawResponse.text()
-            console.error(`[API] Raw fetch failed: ${rawResponse.status} - ${errText}`)
-            throw new Error(`Spotify API Error: ${rawResponse.status} ${errText}`)
-        }
-
-        const playlistItems = await rawResponse.json()
-        console.log(`[API] Fetched playlist items. Total: ${playlistItems.total}`)
+        const scrapedTracks = await fetchPlaylistTracks(playlistId)
 
         // Convert tracks to text list
-        let textList = ""
-        if (playlistItems.items) {
-            textList = playlistItems.items
-                .map((entry: any) => entry.item)
-                // Filter out non-tracks and items with no artist name
-                .filter((item: any) => item && item.track === true && item.artists?.[0]?.name)
-                .map((item: any) => `${item.artists[0].name} - ${item.name}`)
-                .join('\n')
+        const textList = scrapedTracks
+            .map(track => `${track.artists} - ${track.title}`)
+            .join('\n')
 
-            console.log(`[API] Generated text list length: ${textList.length}`)
-        } else {
-            console.log("[API] No tracks found via SDK.")
-        }
+        console.log(`[API] Generated text list from scrape. Total tracks: ${scrapedTracks.length}`)
 
         await prisma.user.update({
             where: { id: session.user.id },
             data: {
                 playlistUrl: url,
                 playlistText: textList,
-                sourceType: 'text_list' // Switch to text list view
+                sourceType: 'text_list'
             },
         })
-        console.log("[API] User updated with playlist text.")
 
         return NextResponse.json({ type: 'text', content: textList })
     } catch (error: any) {
-        console.error("Error in playlist route:", error)
-        return NextResponse.json({ error: "Failed to fetch playlist", details: error.message }, { status: 500 })
+        console.error("Error in playlist route (scraping):", error)
+        return NextResponse.json({ error: "Failed to scrape playlist", details: error.message }, { status: 500 })
     }
 }
 
@@ -152,17 +112,10 @@ export async function GET(req: Request) {
             },
         })
 
-        const spotifyAccount = await prisma.account.findFirst({
-            where: {
-                userId: session.user.id,
-                provider: 'spotify'
-            }
-        })
-
         if (!user) {
             return NextResponse.json({
                 playlist: null,
-                isSpotifyConnected: !!spotifyAccount
+                isSpotifyConnected: false
             })
         }
 
@@ -174,34 +127,13 @@ export async function GET(req: Request) {
                 musicIdentity: user.musicIdentity,
                 nickname: user.nickname,
                 voiceType: user.voiceType,
-                isSpotifyConnected: !!spotifyAccount
+                isSpotifyConnected: false
             })
         }
 
-        // Handle Spotify URL
-        if (!user.playlistUrl) {
-            return NextResponse.json({
-                playlist: null,
-                isSpotifyConnected: !!spotifyAccount
-            })
-        }
-
-        // If we have text content (legacy or new), return it
-        if (user.playlistText) {
-            return NextResponse.json({
-                type: 'text',
-                content: user.playlistText,
-                musicIdentity: user.musicIdentity,
-                nickname: user.nickname,
-                voiceType: user.voiceType,
-                isSpotifyConnected: !!spotifyAccount
-            })
-        }
-
-        // Strictly do not fetch from Spotify on GET. 
         return NextResponse.json({
             playlist: null,
-            isSpotifyConnected: !!spotifyAccount
+            isSpotifyConnected: false
         })
 
     } catch (error) {
