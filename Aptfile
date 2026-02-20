@@ -1,0 +1,12 @@
+libx11-xcb1
+libxrandr2
+libxcomposite1
+libxcursor1
+libxdamage1
+libxfixes3
+libxi6
+libgtk-3-0
+libatk1.0-0
+libasound2
+libgbm1
+libnss3
