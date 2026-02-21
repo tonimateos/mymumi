@@ -215,10 +215,47 @@ export default function Dashboard() {
                 body: JSON.stringify(payload)
             })
 
-            const data = await res.json()
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.error || "Failed to save playlist")
+            }
 
-            setPlaylist(data)
-            setCurrentStep(4)
+            if (res.headers.get('Content-Type')?.includes('application/x-ndjson')) {
+                const reader = res.body?.getReader()
+                if (!reader) throw new Error("Failed to read response")
+
+                const textDecoder = new TextDecoder()
+
+                let done = false
+                while (!done) {
+                    const { value, done: doneReading } = await reader.read()
+                    done = doneReading
+                    if (value) {
+                        const chunk = textDecoder.decode(value)
+                        const lines = chunk.split('\n').filter(Boolean)
+
+                        for (const line of lines) {
+                            try {
+                                const data = JSON.parse(line)
+                                if (data.type === 'progress') {
+                                    setLoadingMessage(`Found ${data.count} songs...`)
+                                } else if (data.type === 'text') {
+                                    setPlaylist(data)
+                                    setCurrentStep(4)
+                                } else if (data.error) {
+                                    throw new Error(data.details || data.error)
+                                }
+                            } catch (e) {
+                                console.error("Error parsing stream chunk:", e)
+                            }
+                        }
+                    }
+                }
+            } else {
+                const data = await res.json()
+                setPlaylist(data)
+                setCurrentStep(4)
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save playlist")
         } finally {
@@ -384,19 +421,19 @@ export default function Dashboard() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="text-center">
                             <h2 className="text-3xl font-bold mb-2">Inject Your Music</h2>
-                            <p className="text-neutral-400">Provide a playlist that you love</p>
+                            <p className="text-neutral-400">Provide a songs that you love</p>
                         </div>
 
                         <div className="flex justify-center gap-4 mb-6">
                             <button onClick={() => setActiveTab("text")} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "text" ? "bg-neutral-800 text-white" : "text-neutral-500"}`}>Paste Text List</button>
-                            <button onClick={() => setActiveTab("url")} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "url" ? "bg-neutral-800 text-white" : "text-neutral-500"}`}>Spotify URL</button>
+                            <button onClick={() => setActiveTab("url")} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === "url" ? "bg-neutral-800 text-white" : "text-neutral-500"}`}>Spotify</button>
                         </div>
 
                         <form onSubmit={saveStep3} className="space-y-4">
                             {activeTab === "url" ? (
                                 <div className="space-y-4">
                                     <p className="text-sm text-neutral-400 text-center mb-4">
-                                        Enter a public Spotify Playlist URL to import tracks.
+                                        Enter a public Spotify Playlist URL with songs that you love.
                                     </p>
                                     <input
                                         type="text"

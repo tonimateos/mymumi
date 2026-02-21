@@ -14,7 +14,7 @@ export interface ScrapedTrack {
  * Fetches track names and artists from a public Spotify playlist using Playwright.
  * This avoids the need for Spotify API credentials or user authentication.
  */
-export async function fetchPlaylistTracks(playlistId: string): Promise<ScrapedTrack[]> {
+export async function fetchPlaylistTracks(playlistId: string, onProgress?: (count: number) => void): Promise<ScrapedTrack[]> {
     console.log(`[Scraper] Fetching playlist info from: https://open.spotify.com/playlist/${playlistId}`);
 
     const browser = await chromium.launch({ headless: true });
@@ -68,6 +68,7 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<ScrapedTr
             });
 
             console.log(`[Scraper] Iteration ${i + 1}: Found ${allTracks.size} unique tracks so far.`);
+            if (onProgress) onProgress(allTracks.size);
 
             // If we didn't find any new tracks for 2 iterations, we've probably reached the end
             if (allTracks.size === lastCount) {

@@ -68,29 +68,56 @@ export async function POST(req: Request) {
     try {
         console.log(`[API] Scraping playlist ID: ${playlistId}`)
 
-        const scrapedTracks = await fetchPlaylistTracks(playlistId)
+        const stream = new ReadableStream({
+            async start(controller) {
+                const encoder = new TextEncoder()
 
-        // Convert tracks to text list
-        const textList = scrapedTracks
-            .map(track => `${track.artists} - ${track.title}`)
-            .join('\n')
+                const sendUpdate = (data: unknown) => {
+                    controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"))
+                }
 
-        console.log(`[API] Generated text list from scrape. Total tracks: ${scrapedTracks.length}`)
+                try {
+                    const scrapedTracks = await fetchPlaylistTracks(playlistId, (count) => {
+                        sendUpdate({ type: 'progress', count })
+                    })
 
-        await prisma.user.update({
-            where: { id: session.user.id },
-            data: {
-                playlistUrl: url,
-                playlistText: textList,
-                sourceType: 'text_list'
-            },
+                    // Convert tracks to text list
+                    const textList = scrapedTracks
+                        .map(track => `${track.artists} - ${track.title}`)
+                        .join('\n')
+
+                    console.log(`[API] Generated text list from scrape. Total tracks: ${scrapedTracks.length}`)
+
+                    await prisma.user.update({
+                        where: { id: session.user.id },
+                        data: {
+                            playlistUrl: url,
+                            playlistText: textList,
+                            sourceType: 'text_list'
+                        },
+                    })
+
+                    sendUpdate({ type: 'text', content: textList })
+                    controller.close()
+                } catch (error: unknown) {
+                    console.error("Error in playlist route (scraping):", error)
+                    const message = error instanceof Error ? error.message : "Failed to scrape playlist"
+                    sendUpdate({ error: "Failed to scrape playlist", details: message })
+                    controller.close()
+                }
+            }
         })
 
-        return NextResponse.json({ type: 'text', content: textList })
+        return new Response(stream, {
+            headers: {
+                'Content-Type': 'application/x-ndjson',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+            },
+        })
     } catch (error: unknown) {
-        console.error("Error in playlist route (scraping):", error)
-        const message = error instanceof Error ? error.message : "Failed to scrape playlist"
-        return NextResponse.json({ error: "Failed to scrape playlist", details: message }, { status: 500 })
+        console.error("Error creating stream:", error)
+        return NextResponse.json({ error: "Failed to start processing" }, { status: 500 })
     }
 }
 
