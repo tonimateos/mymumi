@@ -426,7 +426,7 @@ export default function Dashboard() {
                                 disabled={loading || (activeTab === 'url' ? !url : !textInput)}
                                 className="w-full py-4 bg-white text-black font-bold rounded-2xl hover:bg-neutral-200 transition-colors disabled:opacity-50"
                             >
-                                {loading ? loadingMessage : "Analyze Playlist"}
+                                {loading ? loadingMessage : "Inject Playlist"}
                             </button>
                         </form>
 
