@@ -210,6 +210,40 @@ export default function Dashboard() {
         }
     }
 
+    const handleStartOver = async () => {
+        const confirmed = window.confirm("This will completely delete your profile so you can start again. Are you sure?")
+        if (!confirmed) return
+
+        setLoading(true)
+        setError("")
+        try {
+            const res = await fetch("/api/profile/reset", { method: "POST" })
+            if (res.ok) {
+                // Clear all local states
+                setCurrentStep(1)
+                setNickname("")
+                setCity(null)
+                setCountry(null)
+                setVoiceType(null)
+                setSelectedAttributes([])
+                setPlaylist(null)
+                setUrl("")
+                setTextInput("")
+                setShowMyIdentity(false)
+                setShowFullAnalysis(false)
+                setError("")
+            } else {
+                const data = await res.json()
+                setError(data.error || "Failed to reset profile")
+            }
+        } catch (err) {
+            console.error("Reset error:", err)
+            setError("Connection failed. Please try again.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const toggleAttribute = (attr: string) => {
         setSelectedAttributes(prev => {
             if (prev.includes(attr)) {
@@ -568,7 +602,7 @@ export default function Dashboard() {
                                     disabled={analyzing}
                                     className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xl rounded-2xl shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02]"
                                 >
-                                    {analyzing ? "Understanding Your Musical Identity..." : "Transfer My Musical Identity"}
+                                    {analyzing ? "Understanding Your Musical Identity..." : "Understand My Musical Identity"}
                                 </button>
                             </div>
                             {analyzing && (
@@ -639,15 +673,7 @@ export default function Dashboard() {
                             <div className="text-center pt-8 border-t border-neutral-800">
                                 <p className="text-neutral-500 mb-4">Want to try a different persona?</p>
                                 <button
-                                    onClick={() => {
-                                        setCurrentStep(1)
-                                        setNickname("")
-                                        setVoiceType(null)
-                                        setSelectedAttributes([])
-                                        setPlaylist(null)
-                                        setUrl("")
-                                        setTextInput("")
-                                    }}
+                                    onClick={handleStartOver}
                                     className="px-6 py-3 border border-neutral-700 text-neutral-300 rounded-full hover:bg-neutral-800 hover:text-white transition-colors text-sm"
                                 >
                                     ↺ Start Over
@@ -694,12 +720,11 @@ export default function Dashboard() {
                                 <div className="space-y-12 animate-in zoom-in duration-500">
                                     <div className="space-y-4">
                                         <h2 className="text-4xl font-black bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                                            This is Your Identity
+                                            A New Musical Me is Born!
                                         </h2>
-                                        <p className="text-xl text-neutral-400">The Musical Me that sings your soul...</p>
-                                        {(city || country) && (
+                                        {(country) && (
                                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-full text-xs text-neutral-400">
-                                                <span>📍</span> {[city, country].filter(Boolean).join(', ')}
+                                                <span>📍</span> {country}
                                             </div>
                                         )}
                                     </div>
@@ -851,15 +876,7 @@ export default function Dashboard() {
 
                             <div className="pt-12 border-t border-neutral-800">
                                 <button
-                                    onClick={() => {
-                                        setCurrentStep(1)
-                                        setNickname("")
-                                        setVoiceType(null)
-                                        setSelectedAttributes([])
-                                        setPlaylist(null)
-                                        setUrl("")
-                                        setTextInput("")
-                                    }}
+                                    onClick={handleStartOver}
                                     className="px-6 py-3 border border-neutral-700 text-neutral-300 rounded-full hover:bg-neutral-800 hover:text-white transition-colors text-sm"
                                 >
                                     ↺ Start Over
