@@ -23,40 +23,16 @@ export async function POST(req: Request) {
     // Handle generic profile update
     if (nickname || voiceType) {
         try {
-            let city = undefined
-
-            // Deduce city if nickname is being set (usually the first set)
-            if (nickname) {
-                try {
-                    // Try to get IP from headers
-                    const forwarded = req.headers.get("x-forwarded-for")
-                    const ip = forwarded ? forwarded.split(',')[0] : "8.8.8.8" // fallback for testing if no IP
-
-                    if (ip && ip !== '127.0.0.1' && ip !== '::1') {
-                        const ipRes = await fetch(`http://ip-api.com/json/${ip}?fields=city`)
-                        if (ipRes.ok) {
-                            const ipData = await ipRes.json()
-                            if (ipData.city) {
-                                city = ipData.city
-                                console.log(`[API] Deduced city for user: ${city}`)
-                            }
-                        }
-                    }
-                } catch (ipErr) {
-                    console.error("Error deducing city:", ipErr)
-                }
-            }
-
             await prisma.user.update({
+
                 where: { id: session.user.id },
                 data: {
                     ...(nickname && { nickname }),
                     ...(voiceType && { voiceType }),
-                    ...(musicalAttributes && { musicalAttributes }),
-                    ...(city && { city })
+                    ...(musicalAttributes && { musicalAttributes })
                 }
             })
-            return NextResponse.json({ success: true, city })
+            return NextResponse.json({ success: true })
         } catch (error) {
             console.error("Error updating profile:", error)
             return NextResponse.json({ error: "Failed to update profile" }, { status: 500 })
@@ -164,7 +140,8 @@ export async function GET() {
                 nickname: true,
                 voiceType: true,
                 musicalAttributes: true,
-                city: true
+                city: true,
+                country: true
             },
         })
 
@@ -182,6 +159,7 @@ export async function GET() {
             musicalAttributes: user.musicalAttributes,
             musicIdentity: user.musicIdentity,
             city: user.city,
+            country: user.country,
             isSpotifyConnected: false // Default
         }
 

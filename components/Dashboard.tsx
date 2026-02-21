@@ -39,6 +39,7 @@ interface UserProfile {
     musicIdentity: string | null
     musicalAttributes: string | null
     city: string | null
+    country: string | null
 }
 
 const MUSICAL_ATTRIBUTES = [
@@ -59,6 +60,7 @@ export default function Dashboard() {
     // Step 1: Nickname State
     const [nickname, setNickname] = useState("")
     const [city, setCity] = useState<string | null>(null)
+    const [country, setCountry] = useState<string | null>(null)
 
     // Step 2: Voice & Attributes State
     const [voiceType, setVoiceType] = useState<"MALE" | "FEMALE" | "ANY" | null>(null)
@@ -93,6 +95,7 @@ export default function Dashboard() {
                 // Load data into state
                 if (data.nickname) setNickname(data.nickname)
                 if (data.city) setCity(data.city)
+                if (data.country) setCountry(data.country)
                 if (data.voiceType) setVoiceType(data.voiceType)
                 if (data.musicalAttributes) {
                     try {
@@ -146,18 +149,36 @@ export default function Dashboard() {
         }
     }, [status, fetchProfileAndPlaylist])
 
+    // Detect city automatically in the background
+    useEffect(() => {
+        if (currentStep === 1 && !city && status === "authenticated") {
+            const detectCity = async () => {
+                try {
+                    const res = await fetch("/api/detect-city", { method: "POST" })
+                    if (res.ok) {
+                        const data = await res.json()
+                        console.log("City data:", data)
+                        if (data.city) setCity(data.city)
+                        if (data.country) setCountry(data.country)
+                    }
+                } catch (err) {
+                    console.error("City detection failed:", err)
+                }
+            }
+            detectCity()
+        }
+    }, [currentStep, city, status])
+
     const saveStep1 = async () => {
         if (!nickname.trim()) return setError("Please enter a nickname")
         setLoading(true)
         setError("")
         try {
-            const res = await fetch("/api/playlist", {
+            await fetch("/api/playlist", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ nickname })
             })
-            const data = await res.json()
-            if (data.city) setCity(data.city)
             setCurrentStep(2)
         } catch {
             setError("Failed to save nickname")
@@ -676,9 +697,9 @@ export default function Dashboard() {
                                             This is Your Identity
                                         </h2>
                                         <p className="text-xl text-neutral-400">The Musical Me that sings your soul...</p>
-                                        {city && (
+                                        {(city || country) && (
                                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-full text-xs text-neutral-400">
-                                                <span>📍</span> {city}
+                                                <span>📍</span> {[city, country].filter(Boolean).join(', ')}
                                             </div>
                                         )}
                                     </div>
@@ -811,14 +832,16 @@ export default function Dashboard() {
                                                 )}
                                                 <div>
                                                     <div className="font-bold text-white">{profile.nickname || "Anonymous"}</div>
-                                                    <div className="text-xs text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full inline-block mt-1">
-                                                        Voice: {profile.voiceType || "Any"}
-                                                    </div>
-                                                    {profile.city && (
-                                                        <div className="text-[10px] text-neutral-500 mt-1">
-                                                            📍 {profile.city}
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        <div className="text-[10px] text-neutral-400 bg-neutral-800/50 border border-neutral-700/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                            Voice: {profile.voiceType || "Any"}
                                                         </div>
-                                                    )}
+                                                        {profile.country && (
+                                                            <div className="text-[10px] text-neutral-400 bg-neutral-800/50 border border-neutral-700/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                                📍 {profile.country}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}

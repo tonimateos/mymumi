@@ -30,7 +30,8 @@ export async function GET() {
                 voiceType: true,
                 musicalAttributes: true,
                 musicIdentity: true,
-                city: true
+                city: true,
+                country: true
             }
         })
 
