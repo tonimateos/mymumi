@@ -636,13 +636,15 @@ export default function Dashboard() {
                     currentStep === 6 && (
                         <div className="space-y-12 animate-in fade-in duration-700 text-center">
                             <div className="flex justify-center items-center gap-6 mb-8">
-                                <audio
-                                    src={selectedAudioUrl}
-                                    autoPlay
-                                    muted={isMuted}
-                                    style={{ display: 'none' }}
-                                    onEnded={() => console.log("Song finished")}
-                                />
+                                {selectedAudioUrl && (
+                                    <audio
+                                        src={selectedAudioUrl}
+                                        autoPlay
+                                        muted={isMuted}
+                                        style={{ display: 'none' }}
+                                        onEnded={() => console.log("Song finished")}
+                                    />
+                                )}
                                 <button
                                     onClick={() => setIsMuted(!isMuted)}
                                     className="p-4 bg-neutral-800/50 hover:bg-neutral-800 rounded-full border border-neutral-700 transition-all transform hover:scale-110 flex items-center gap-2 group"
