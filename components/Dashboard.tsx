@@ -682,31 +682,27 @@ export default function Dashboard() {
                                         <div className="absolute -inset-12 border-8 border-dashed border-green-500/20 rounded-full animate-spin-slow"></div>
                                     </div>
 
-                                    {/* Analysis Result (Inline version) */}
-                                    <div className={`bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6 backdrop-blur-md max-w-xl mx-auto text-left transition-all duration-500 overflow-hidden ${showFullAnalysis ? 'max-h-[2000px]' : 'max-h-60'}`}>
-                                        <p className="text-neutral-400 text-sm mb-4">You are: {selectedAttributes.join(", ")}</p>
-
-                                        {!showFullAnalysis ? (
-                                            <>
-                                                <div className="text-sm text-neutral-300 line-clamp-3">
-                                                    {playlist?.musicIdentity && (
-                                                        (() => {
-                                                            try {
-                                                                const categories = JSON.parse(playlist.musicIdentity)
-                                                                return Array.isArray(categories) ? categories[0]?.description : playlist.musicIdentity
-                                                            } catch { return playlist.musicIdentity }
-                                                        })()
-                                                    )}...
+                                    {/* Analysis Result (Icon Triggered) */}
+                                    <div className={`transition-all duration-700 ease-in-out overflow-hidden mx-auto ${showFullAnalysis ? 'max-h-[4000px] opacity-100 mt-8' : 'max-h-0 opacity-0 mt-0'}`}>
+                                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-8 backdrop-blur-md max-w-xl mx-auto text-left shadow-2xl">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-white mb-1">Musical Profile</h3>
                                                 </div>
                                                 <button
-                                                    onClick={() => setShowFullAnalysis(true)}
-                                                    className="mt-4 text-xs text-green-400 underline hover:text-green-300"
+                                                    onClick={() => setShowFullAnalysis(false)}
+                                                    className="text-neutral-500 hover:text-white transition-colors"
                                                 >
-                                                    View Full Analysis
+                                                    ✕
                                                 </button>
-                                            </>
-                                        ) : (
-                                            <div className="space-y-6 animate-in fade-in duration-500">
+                                            </div>
+
+                                            <p className="text-neutral-300 text-sm mb-6 pb-4 border-b border-white/5">
+                                                <span className="text-neutral-500 font-mono text-[10px] uppercase block mb-1">
+                                                    {selectedAttributes.join(" • ")}</span>
+                                            </p>
+
+                                            <div className="space-y-6">
                                                 {playlist?.musicIdentity && (
                                                     (() => {
                                                         try {
@@ -714,36 +710,50 @@ export default function Dashboard() {
                                                             return Array.isArray(categories) ? (
                                                                 <div className="space-y-6">
                                                                     {categories.map((c: { title?: string; description?: string } | string, i: number) => (
-                                                                        <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                                        <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5 group hover:bg-white/[0.07] transition-colors">
                                                                             <div className="flex items-center gap-3 mb-2">
-                                                                                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold border border-indigo-500/30">
+                                                                                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-500/20 text-indigo-300 rounded-full text-[10px] font-bold border border-indigo-500/30">
                                                                                     {i + 1}
                                                                                 </span>
-                                                                                <span className="text-lg font-bold text-indigo-300">
+                                                                                <span className="text-base font-bold text-indigo-300">
                                                                                     {typeof c === 'string' ? c : c.title}
                                                                                 </span>
                                                                             </div>
                                                                             {typeof c === 'object' && c.description && (
-                                                                                <p className="text-neutral-300 text-sm leading-relaxed pl-9">
+                                                                                <p className="text-neutral-300 text-xs leading-relaxed pl-9">
                                                                                     {c.description}
                                                                                 </p>
                                                                             )}
                                                                         </div>
                                                                     ))}
                                                                 </div>
-                                                            ) : <div className="whitespace-pre-wrap text-sm">{playlist.musicIdentity}</div>
-                                                        } catch { return <div className="whitespace-pre-wrap text-sm">{playlist.musicIdentity}</div> }
+                                                            ) : <div className="whitespace-pre-wrap text-xs text-neutral-300">{playlist.musicIdentity}</div>
+                                                        } catch { return <div className="whitespace-pre-wrap text-xs text-neutral-300">{playlist.musicIdentity}</div> }
                                                     })()
                                                 )}
-                                                <button
-                                                    onClick={() => setShowFullAnalysis(false)}
-                                                    className="mt-4 text-xs text-neutral-500 underline hover:text-neutral-300"
-                                                >
-                                                    Collapse Analysis
-                                                </button>
                                             </div>
-                                        )}
+
+                                            <button
+                                                onClick={() => setShowFullAnalysis(false)}
+                                                className="mt-8 w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl transition-colors text-xs font-bold"
+                                            >
+                                                Collapse Analysis
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {!showFullAnalysis && (
+                                        <div className="mt-8 flex flex-col items-center gap-2 animate-in fade-in duration-1000">
+                                            <button
+                                                onClick={() => setShowFullAnalysis(true)}
+                                                className="w-14 h-14 bg-neutral-900 border border-neutral-800 rounded-full flex items-center justify-center text-2xl hover:border-green-500/50 hover:bg-neutral-800 transition-all transform hover:scale-110 shadow-lg shadow-black/50 group"
+                                                title="View Full Analysis"
+                                            >
+                                                <span className="group-hover:animate-pulse">📝</span>
+                                            </button>
+                                            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Profile Details</span>
+                                        </div>
+                                    )}
 
                                     <button
                                         onClick={() => setShowMyIdentity(false)}
