@@ -77,13 +77,18 @@ export default function Dashboard() {
     // Step 6: Transfer Identity State
     const [isMuted, setIsMuted] = useState(false)
     const [selectedAudioUrl, setSelectedAudioUrl] = useState("")
+    const [showMyIdentity, setShowMyIdentity] = useState(false)
+    const [showFullAnalysis, setShowFullAnalysis] = useState(false)
 
     const fetchProfileAndPlaylist = useCallback(async () => {
         setLoading(true)
+        setError("")
         try {
             const res = await fetch("/api/playlist")
             if (res.ok) {
                 const data = await res.json()
+
+                // Load data into state
                 if (data.nickname) setNickname(data.nickname)
                 if (data.voiceType) setVoiceType(data.voiceType)
                 if (data.musicalAttributes) {
@@ -98,6 +103,11 @@ export default function Dashboard() {
                     setPlaylist(data)
                 }
 
+                if (data.error) {
+                    setError(data.details || data.error)
+                    return
+                }
+
                 // Check URL params for overrides from auth redirect
                 const stepParam = searchParams.get('step')
                 const tabParam = searchParams.get('tab')
@@ -110,13 +120,17 @@ export default function Dashboard() {
                     // Determine step based on data existence
                     if (!data.nickname) setCurrentStep(1)
                     else if (!data.voiceType) setCurrentStep(2)
-                    else if (!data.content && !data.id) setCurrentStep(3) // No playlist
+                    else if (!data.content && !data.id && !data.url) setCurrentStep(3) // No playlist
                     else if (!data.musicIdentity) setCurrentStep(4) // Has playlist, needs analysis
-                    else setCurrentStep(5) // Done
+                    else setCurrentStep(6) // Done - Go straight to Feed
                 }
+            } else {
+                const errorData = await res.json().catch(() => ({}))
+                setError(errorData.error || `Failed to fetch profile (Status: ${res.status})`)
             }
         } catch (err) {
-            console.error(err)
+            console.error("Fetch error:", err)
+            setError("Connection failed. Please check your internet or try again later.")
         } finally {
             setLoading(false)
         }
@@ -312,6 +326,7 @@ export default function Dashboard() {
         const randomSong = pool[Math.floor(Math.random() * pool.length)]
         setSelectedAudioUrl(randomSong)
         setCurrentStep(6)
+        setShowMyIdentity(true) // Show identity first time entering Step 6
     }
 
 
@@ -328,6 +343,18 @@ export default function Dashboard() {
                     MyMuMe
                 </h1>
                 <div className="flex items-center gap-4">
+                    {currentStep >= 5 && (
+                        <button
+                            onClick={() => {
+                                setCurrentStep(6)
+                                setShowMyIdentity(!showMyIdentity)
+                            }}
+                            className={`p-2 rounded-full transition-all transform hover:scale-110 ${showMyIdentity ? 'bg-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'bg-neutral-800'}`}
+                            title="See My Identity"
+                        >
+                            <span className="text-xl">👾</span>
+                        </button>
+                    )}
                     <span className="text-neutral-400 text-sm hidden md:inline">Step {currentStep} of 6</span>
                     {session?.user?.image && (
                         <Image src={session.user.image} alt="Profile" width={32} height={32} className="rounded-full border border-neutral-700" />
@@ -607,95 +634,187 @@ export default function Dashboard() {
                 {/* Step 6: Musical Me Transfer */}
                 {
                     currentStep === 6 && (
-                        <div className="space-y-12 animate-in fade-in zoom-in duration-700 text-center">
-                            <div className="space-y-4">
-                                <h2 className="text-4xl font-black bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                                    Identity Transferred!
-                                </h2>
-                                <p className="text-xl text-neutral-400">Your Musical Me is now singing your soul...</p>
+                        <div className="space-y-12 animate-in fade-in duration-700 text-center">
+                            <div className="flex justify-center items-center gap-6 mb-8">
+                                <audio
+                                    src={selectedAudioUrl}
+                                    autoPlay
+                                    muted={isMuted}
+                                    style={{ display: 'none' }}
+                                    onEnded={() => console.log("Song finished")}
+                                />
+                                <button
+                                    onClick={() => setIsMuted(!isMuted)}
+                                    className="p-4 bg-neutral-800/50 hover:bg-neutral-800 rounded-full border border-neutral-700 transition-all transform hover:scale-110 flex items-center gap-2 group"
+                                    title={isMuted ? "Unmute" : "Mute"}
+                                >
+                                    {isMuted ? (
+                                        <>
+                                            <span className="text-2xl">🔇</span>
+                                            <span className="text-xs font-bold text-neutral-400 group-hover:text-white transition-colors">OFF</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-2xl">🔊</span>
+                                            <span className="text-xs font-bold text-green-500 group-hover:text-green-400 transition-colors">ON</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                            <div className="relative inline-block py-12">
-                                {/* The Beast */}
-                                <div className="text-[14rem] leading-none animate-bounce-slow relative inline-block filter drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] md:text-[18rem]">
-                                    👾
-                                    <div className="absolute top-8 -right-8 animate-pulse text-6xl">🎵</div>
-                                    <div className="absolute bottom-4 -left-12 animate-pulse delay-700 text-6xl">🎶</div>
-                                </div>
 
-                                {/* Singing Animation Overlay */}
-                                <div className="absolute -inset-12 border-8 border-dashed border-green-500/20 rounded-full animate-spin-slow"></div>
-                            </div>
+                            {showMyIdentity ? (
+                                <div className="space-y-12 animate-in zoom-in duration-500">
+                                    <div className="space-y-4">
+                                        <h2 className="text-4xl font-black bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                                            This is Your Identity
+                                        </h2>
+                                        <p className="text-xl text-neutral-400">The Musical Me that sings your soul...</p>
+                                    </div>
+                                    <div className="relative inline-block py-12">
+                                        {/* The Beast */}
+                                        <div className="text-[14rem] leading-none animate-bounce-slow relative inline-block filter drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] md:text-[18rem]">
+                                            👾
+                                            <div className="absolute top-8 -right-8 animate-pulse text-6xl">🎵</div>
+                                            <div className="absolute bottom-4 -left-12 animate-pulse delay-700 text-6xl">🎶</div>
+                                        </div>
 
+                                        {/* Singing Animation Overlay */}
+                                        <div className="absolute -inset-12 border-8 border-dashed border-green-500/20 rounded-full animate-spin-slow"></div>
+                                    </div>
 
+                                    {/* Analysis Result (Inline version) */}
+                                    <div className={`bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6 backdrop-blur-md max-w-xl mx-auto text-left transition-all duration-500 overflow-hidden ${showFullAnalysis ? 'max-h-[2000px]' : 'max-h-60'}`}>
+                                        <p className="text-neutral-400 text-sm mb-4">You are: {selectedAttributes.join(", ")}</p>
 
-                            <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden">
-                                <div className="flex flex-col items-center gap-6 relative z-10">
-                                    <button
-                                        onClick={() => setIsMuted(!isMuted)}
-                                        className="p-6 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all transform hover:scale-110"
-                                    >
-                                        {isMuted ? (
-                                            <span className="text-4xl">🔇</span>
+                                        {!showFullAnalysis ? (
+                                            <>
+                                                <div className="text-sm text-neutral-300 line-clamp-3">
+                                                    {playlist?.musicIdentity && (
+                                                        (() => {
+                                                            try {
+                                                                const categories = JSON.parse(playlist.musicIdentity)
+                                                                return Array.isArray(categories) ? categories[0]?.description : playlist.musicIdentity
+                                                            } catch { return playlist.musicIdentity }
+                                                        })()
+                                                    )}...
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowFullAnalysis(true)}
+                                                    className="mt-4 text-xs text-green-400 underline hover:text-green-300"
+                                                >
+                                                    View Full Analysis
+                                                </button>
+                                            </>
                                         ) : (
-                                            <span className="text-4xl">🔊</span>
+                                            <div className="space-y-6 animate-in fade-in duration-500">
+                                                {playlist?.musicIdentity && (
+                                                    (() => {
+                                                        try {
+                                                            const categories = JSON.parse(playlist.musicIdentity)
+                                                            return Array.isArray(categories) ? (
+                                                                <div className="space-y-6">
+                                                                    {categories.map((c: { title?: string; description?: string } | string, i: number) => (
+                                                                        <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                                            <div className="flex items-center gap-3 mb-2">
+                                                                                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold border border-indigo-500/30">
+                                                                                    {i + 1}
+                                                                                </span>
+                                                                                <span className="text-lg font-bold text-indigo-300">
+                                                                                    {typeof c === 'string' ? c : c.title}
+                                                                                </span>
+                                                                            </div>
+                                                                            {typeof c === 'object' && c.description && (
+                                                                                <p className="text-neutral-300 text-sm leading-relaxed pl-9">
+                                                                                    {c.description}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : <div className="whitespace-pre-wrap text-sm">{playlist.musicIdentity}</div>
+                                                        } catch { return <div className="whitespace-pre-wrap text-sm">{playlist.musicIdentity}</div> }
+                                                    })()
+                                                )}
+                                                <button
+                                                    onClick={() => setShowFullAnalysis(false)}
+                                                    className="mt-4 text-xs text-neutral-500 underline hover:text-neutral-300"
+                                                >
+                                                    Collapse Analysis
+                                                </button>
+                                            </div>
                                         )}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setShowMyIdentity(false)}
+                                        className="px-6 py-3 bg-neutral-800 text-white rounded-full hover:bg-neutral-700 transition-all font-bold"
+                                    >
+                                        Back to Feed
                                     </button>
-
-                                    <audio
-                                        src={selectedAudioUrl}
-                                        autoPlay
-                                        loop
-                                        muted={isMuted}
-                                        style={{ display: 'none' }}
-                                    />
                                 </div>
+                            ) : (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="text-center">
+                                        <h2 className="text-3xl font-black bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent mb-2">
+                                            MuME Collective
+                                        </h2>
+                                        <p className="text-neutral-400">Discover other unique identities</p>
+                                    </div>
 
-                                {/* Visualizer bars */}
-                                <div className="absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center gap-1 px-4 opacity-20 pointer-events-none">
-                                    {[...Array(20)].map((_, i) => (
-                                        <div
-                                            key={i}
-                                            className="w-full bg-green-500 rounded-t-sm"
-                                            style={{
-                                                height: `${Math.random() * 100}%`,
-                                                animation: `visualizer 1s ease-in-out infinite alternate`,
-                                                animationDelay: `${i * 0.05}s`
-                                            }}
-                                        ></div>
-                                    ))}
-                                </div>
-                            </div>
+                                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden">
+                                        {/* Visualizer bars */}
+                                        <div className="absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center gap-1 px-4 opacity-20 pointer-events-none">
+                                            {[...Array(20)].map((_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="w-full bg-green-500 rounded-t-sm"
+                                                    style={{
+                                                        height: `${Math.random() * 100}%`,
+                                                        animation: `visualizer 1s ease-in-out infinite alternate`,
+                                                        animationDelay: `${i * 0.05}s`
+                                                    }}
+                                                ></div>
+                                            ))}
+                                        </div>
+                                    </div>
 
-                            {/* Public Feed */}
-                            <div className="space-y-6 max-w-2xl mx-auto text-left py-12 border-t border-neutral-800">
-                                <h3 className="text-xl font-bold flex items-center gap-2 mb-6">
-                                    <span className="text-2xl">🌍</span> Other MyMuMEs
-                                </h3>
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    {publicProfiles.map((profile) => (
-                                        <div key={profile.id} className="bg-neutral-900/50 border border-neutral-800 p-4 rounded-xl flex items-center gap-4 hover:border-neutral-700 transition-colors">
-                                            {profile.image ? (
-                                                <Image src={profile.image} alt={profile.nickname || "User"} width={48} height={48} className="rounded-full" />
-                                            ) : (
-                                                <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center text-xl">👤</div>
-                                            )}
-                                            <div>
-                                                <div className="font-bold text-white">{profile.nickname || "Anonymous"}</div>
-                                                <div className="text-xs text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full inline-block mt-1">
-                                                    Voice: {profile.voiceType || "Any"}
+                                    {/* Public Feed */}
+                                    <div className="grid gap-4 md:grid-cols-2 text-left">
+                                        {publicProfiles.map((profile) => (
+                                            <div key={profile.id} className="bg-neutral-900/50 border border-neutral-800 p-4 rounded-xl flex items-center gap-4 hover:border-neutral-700 transition-colors">
+                                                {profile.image ? (
+                                                    <Image src={profile.image} alt={profile.nickname || "User"} width={48} height={48} className="rounded-full" />
+                                                ) : (
+                                                    <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center text-xl">👤</div>
+                                                )}
+                                                <div>
+                                                    <div className="font-bold text-white">{profile.nickname || "Anonymous"}</div>
+                                                    <div className="text-xs text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full inline-block mt-1">
+                                                        Voice: {profile.voiceType || "Any"}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            <button
-                                onClick={() => setCurrentStep(5)}
-                                className="text-neutral-500 hover:text-white underline transition-colors"
-                            >
-                                Back to Profile
-                            </button>
+                            <div className="pt-12 border-t border-neutral-800">
+                                <button
+                                    onClick={() => {
+                                        setCurrentStep(1)
+                                        setNickname("")
+                                        setVoiceType(null)
+                                        setSelectedAttributes([])
+                                        setPlaylist(null)
+                                        setUrl("")
+                                        setTextInput("")
+                                    }}
+                                    className="px-6 py-3 border border-neutral-700 text-neutral-300 rounded-full hover:bg-neutral-800 hover:text-white transition-colors text-sm"
+                                >
+                                    ↺ Start Over
+                                </button>
+                            </div>
 
                             <style jsx>{`
                             @keyframes visualizer {

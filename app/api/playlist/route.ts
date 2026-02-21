@@ -149,23 +149,26 @@ export async function GET() {
             })
         }
 
-        // Handle Text List
-        if (user.sourceType === 'text_list' && user.playlistText) {
-            return NextResponse.json({
-                type: 'text',
-                content: user.playlistText,
-                musicIdentity: user.musicIdentity,
-                nickname: user.nickname,
-                voiceType: user.voiceType,
-                musicalAttributes: user.musicalAttributes,
-                isSpotifyConnected: false
-            })
+        // Create base response with profile data
+        const responseData: Record<string, unknown> = {
+            nickname: user.nickname,
+            voiceType: user.voiceType,
+            musicalAttributes: user.musicalAttributes,
+            musicIdentity: user.musicIdentity,
+            isSpotifyConnected: false // Default
         }
 
-        return NextResponse.json({
-            playlist: null,
-            isSpotifyConnected: false
-        })
+        // Add playlist data if it exists
+        if (user.sourceType === 'text_list' && user.playlistText) {
+            responseData.type = 'text'
+            responseData.content = user.playlistText
+        } else if (user.playlistUrl) {
+            responseData.type = 'spotify'
+            responseData.url = user.playlistUrl
+            // For now we don't return full tracks in info, Step 3/4 handles that if needed
+        }
+
+        return NextResponse.json(responseData)
 
     } catch (error) {
         console.error("Error fetching saved playlist:", error)
