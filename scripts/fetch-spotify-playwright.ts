@@ -46,11 +46,11 @@ const run = async () => {
         console.table(tracks);
         console.log(`\nTotal tracks found: ${tracks.length}`);
 
-    } catch (error: any) {
-        if (error.name === 'TimeoutError') {
+    } catch (error) {
+        if (error instanceof Error && error.name === 'TimeoutError') {
             console.error("\nError: Timeout waiting for tracks. The playlist might be private or the page structure has changed.");
         } else {
-            console.error("\nError fetching playlist:", error.message);
+            console.error('Error fetching playlist:', error instanceof Error ? error.message : "Unknown error");
         }
     } finally {
         await browser.close();

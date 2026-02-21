@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSession, signOut, signIn } from "next-auth/react"
+import { useState, useEffect, useCallback } from "react"
+import { useSession, signOut } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
-import prompts from "@/config/prompts.json"
 
 interface SpotifyPlaylist {
     type: 'spotify'
@@ -62,8 +61,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(false)
     const [loadingMessage, setLoadingMessage] = useState("Analyzing...")
     const [analyzing, setAnalyzing] = useState(false)
-    const [isSinging, setIsSinging] = useState(false)
-    const [audioUrl, setAudioUrl] = useState("")
     const [error, setError] = useState("")
     const [publicProfiles, setPublicProfiles] = useState<UserProfile[]>([])
 
@@ -71,14 +68,7 @@ export default function Dashboard() {
     const [isMuted, setIsMuted] = useState(false)
     const [selectedAudioUrl, setSelectedAudioUrl] = useState("")
 
-    // Load initial data
-    useEffect(() => {
-        if (status === "authenticated") {
-            fetchProfileAndPlaylist()
-        }
-    }, [status])
-
-    const fetchProfileAndPlaylist = async () => {
+    const fetchProfileAndPlaylist = useCallback(async () => {
         setLoading(true)
         try {
             const res = await fetch("/api/playlist")
@@ -113,7 +103,14 @@ export default function Dashboard() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [searchParams])
+
+    // Load initial data
+    useEffect(() => {
+        if (status === "authenticated") {
+            fetchProfileAndPlaylist()
+        }
+    }, [status, fetchProfileAndPlaylist])
 
     const saveStep1 = async () => {
         if (!nickname.trim()) return setError("Please enter a nickname")
@@ -126,7 +123,7 @@ export default function Dashboard() {
                 body: JSON.stringify({ nickname })
             })
             setCurrentStep(2)
-        } catch (err) {
+        } catch {
             setError("Failed to save nickname")
         } finally {
             setLoading(false)
@@ -144,7 +141,7 @@ export default function Dashboard() {
                 body: JSON.stringify({ voiceType: selectedVoice })
             })
             setCurrentStep(3)
-        } catch (err) {
+        } catch {
             setError("Failed to save voice type")
         } finally {
             setLoading(false)
@@ -162,7 +159,7 @@ export default function Dashboard() {
             setLoadingMessage("Finding first songs...")
         }, 2000)
 
-        const payload: any = {}
+        const payload: { url?: string; text?: string } = {}
         if (activeTab === "url") {
             if (!url.includes("open.spotify.com/playlist/")) {
                 setLoading(false)
@@ -188,8 +185,8 @@ export default function Dashboard() {
 
             setPlaylist(data)
             setCurrentStep(4)
-        } catch (err: any) {
-            setError(err.message || "Failed to save playlist")
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save playlist")
         } finally {
             clearTimeout(messageTimer)
             setLoading(false)
@@ -207,14 +204,14 @@ export default function Dashboard() {
             setPlaylist(prev => prev ? { ...prev, musicIdentity: data.result } : null)
             setCurrentStep(5)
             fetchPublicProfiles()
-        } catch (err: any) {
-            setError(err.message || "Failed to analyze")
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to analyze")
         } finally {
             setAnalyzing(false)
         }
     }
 
-    const fetchPublicProfiles = async () => {
+    const fetchPublicProfiles = useCallback(async () => {
         try {
             const res = await fetch("/api/public-profiles")
             if (res.ok) {
@@ -224,7 +221,7 @@ export default function Dashboard() {
         } catch (err) {
             console.error(err)
         }
-    }
+    }, [])
 
     const startTransfer = () => {
         const maleSongs = [
@@ -250,7 +247,7 @@ export default function Dashboard() {
     // Fetch profiles if we start at step 5
     useEffect(() => {
         if (currentStep === 5) fetchPublicProfiles()
-    }, [currentStep])
+    }, [currentStep, fetchPublicProfiles])
 
 
     return (
@@ -298,7 +295,7 @@ export default function Dashboard() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="text-center">
                             <h2 className="text-3xl font-bold mb-2">Choose your voice</h2>
-                            <p className="text-neutral-400">Who should sing your life's soundtrack?</p>
+                            <p className="text-neutral-400">Who should sing your life&apos;s soundtrack?</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[
@@ -308,7 +305,7 @@ export default function Dashboard() {
                             ].map((voice) => (
                                 <button
                                     key={voice.id}
-                                    onClick={() => saveStep2(voice.id as any)}
+                                    onClick={() => saveStep2(voice.id as "MALE" | "FEMALE" | "ANY")}
                                     className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-green-500 hover:bg-neutral-800 transition-all group"
                                 >
                                     <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">{voice.icon}</div>
@@ -449,7 +446,7 @@ export default function Dashboard() {
                                                 const categories = JSON.parse(playlist.musicIdentity)
                                                 return Array.isArray(categories) ? (
                                                     <div className="space-y-6">
-                                                        {categories.map((c: any, i: number) => (
+                                                        {categories.map((c: { title?: string; description?: string } | string, i: number) => (
                                                             <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5">
                                                                 <div className="flex items-center gap-3 mb-2">
                                                                     <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold border border-indigo-500/30">

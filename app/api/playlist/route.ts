@@ -86,13 +86,14 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json({ type: 'text', content: textList })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error in playlist route (scraping):", error)
-        return NextResponse.json({ error: "Failed to scrape playlist", details: error.message }, { status: 500 })
+        const message = error instanceof Error ? error.message : "Failed to scrape playlist"
+        return NextResponse.json({ error: "Failed to scrape playlist", details: message }, { status: 500 })
     }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
     const session = await getServerSession(authOptions)
 
     if (!session || !session.user) {

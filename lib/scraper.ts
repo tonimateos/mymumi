@@ -90,7 +90,7 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<ScrapedTr
                     // Use mouse wheel for targeted scrolling
                     await page.mouse.wheel(0, 1000);
                     console.log("Found track to move mouse to...")
-                } catch (e) {
+                } catch {
                     console.log("Found track to move mouse to... but failed to scroll")
                     await page.evaluate(() => window.scrollBy(0, 1000));
                 }
@@ -106,8 +106,8 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<ScrapedTr
         console.log(`[Scraper] Successfully scraped ${tracks.length} tracks.`);
         return tracks;
 
-    } catch (error: any) {
-        console.error(`[Scraper] Error fetching playlist ${playlistId}:`, error.message);
+    } catch (error) {
+        console.error(`[Scraper] Error fetching playlist ${playlistId}:`, error instanceof Error ? error.message : "Unknown error");
         throw error;
     } finally {
         await browser.close();

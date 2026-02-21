@@ -8,7 +8,7 @@ import prompts from "@/config/prompts.json"
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
-export async function POST(req: Request) {
+export async function POST() {
     const session = await getServerSession(authOptions)
 
     if (!session || !session.user) {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
             )) {
                 throw new Error("Response is not an array of objects with title and description")
             }
-        } catch (e) {
+        } catch {
             console.error("Failed to parse Gemini response:", textResponse)
             return NextResponse.json({
                 error: "analysis failed"
