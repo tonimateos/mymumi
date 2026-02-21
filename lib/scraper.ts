@@ -27,7 +27,7 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<ScrapedTr
         await page.goto(`https://open.spotify.com/playlist/${playlistId}`);
 
         // Initial wait for the first elements to appear
-        await page.waitForSelector('[data-testid="tracklist-row"]', { timeout: 15000 });
+        await page.waitForSelector('[data-testid="tracklist-row"]', { timeout: 45000 });
 
         const allTracks = new Map<string, { title: string, artists: string }>();
         let lastCount = 0;

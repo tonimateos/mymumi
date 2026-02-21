@@ -228,12 +228,12 @@ export default function Dashboard() {
 
     const startTransfer = () => {
         const maleSongs = [
-            "/mocks/male/6320c514-7b91-ba9b-48dd-d8c346f7c56b.mp3",
-            "/mocks/male/ecdd1f54-9aab-35a0-a8d0-fb3a82ba3dc0.mp3"
+            "/mocks/welcome/male/Echo_Bloom_Male.mp3",
+            "/mocks/welcome/male/Echo_Bloom_2_Male.mp3"
         ]
         const femaleSongs = [
-            "/mocks/female/3d962127-cc81-2640-b400-6d57595458d8.mp3",
-            "/mocks/female/88ac98e2-df53-1979-c6c4-1fd4bc8f8813.mp3"
+            "/mocks/welcome/female/Echo_Bloom.mp3",
+            "/mocks/welcome/female/Echo_Bloom_2_Female.mp3"
         ]
 
         let pool = []
