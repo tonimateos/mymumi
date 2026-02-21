@@ -348,7 +348,7 @@ export default function Dashboard() {
 
                         <div className="text-center mb-8">
                             <h3 className="text-xl font-bold mb-2">Define Its Personality</h3>
-                            <p className="text-neutral-400">Select exactly 4 attributes that describe your musical soul.</p>
+                            <p className="text-neutral-400">Select 4 attributes</p>
                             <div className="text-sm font-mono mt-2 text-green-500">
                                 {selectedAttributes.length} / 4 Selected
                             </div>
