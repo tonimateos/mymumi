@@ -74,7 +74,11 @@ Used for verifying full user journeys. To ensure reliability and speed, we use a
 - **Tool**: [Playwright](https://playwright.dev/).
 - **Run**: `npm run test:e2e`
 
-### 3. Coverage
+### 3. Database Connectivity
+Verify that the database is reachable and Prisma is correctly configured.
+- **Run**: `npx playwright test tests/e2e/database.test.ts`
+
+### 4. Coverage
 Monitor how much of the codebase is covered by tests:
 - **Run**: `npm run test:coverage`
 
