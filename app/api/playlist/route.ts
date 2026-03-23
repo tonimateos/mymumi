@@ -175,6 +175,7 @@ export async function GET() {
         } else if (user.playlistUrl) {
             responseData.type = 'spotify'
             responseData.url = user.playlistUrl
+            responseData.content = user.playlistText
             // For now we don't return full tracks in info, Step 3/4 handles that if needed
         }
 

@@ -20,6 +20,7 @@ interface SpotifyPlaylist {
     }
     musicIdentity?: string | null
     content?: string
+    url?: string
 }
 
 interface TextPlaylist {
@@ -981,6 +982,49 @@ export default function Dashboard() {
                                                         } catch { return <div className="whitespace-pre-wrap text-xs text-neutral-300">{playlist.musicIdentity}</div> }
                                                     })()
                                                 )}
+                                            </div>
+
+                                            {/* User's Song List */}
+                                            <div className="mt-10 pt-8 border-t border-white/5">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h4 className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.2em]">Your Songs</h4>
+                                                    {playlist?.type === 'spotify' && playlist.url && (
+                                                        <a
+                                                            href={playlist.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] font-bold text-green-500 hover:text-green-400 transition-colors flex items-center gap-1.5 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20"
+                                                        >
+                                                            <span className="text-xs">🎧</span>
+                                                            View on Spotify
+                                                        </a>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {playlist?.content ? (
+                                                        playlist.content.split('\n').filter(s => s.trim().length > 0).map((song, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="p-3 bg-white/[0.03] border border-white/5 rounded-xl text-neutral-400 text-xs flex justify-between items-center group hover:bg-white/[0.05] transition-all hover:text-neutral-300"
+                                                            >
+                                                                <span className="truncate mr-4">{song}</span>
+                                                                <a
+                                                                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-bold text-neutral-500 hover:text-white uppercase tracking-wider"
+                                                                >
+                                                                    Play ↗
+                                                                </a>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="text-center py-8 text-neutral-600 italic text-xs">
+                                                            No source songs found.
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
